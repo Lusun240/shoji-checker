@@ -33,7 +33,17 @@ from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeo
 # ═══════════════════════════════════════════════════════════════════════════════
 
 DESIRED_START = date(2026, 3, 8)    # First acceptable date (inclusive)
-DESIRED_END   = date(2026, 3, 21)   # Last  acceptable date (inclusive)
+DESIRED_END   = date(2026, 6, 3)    # Last  acceptable date (inclusive)
+
+# Which weekdays to accept. Uses Python's weekday numbers:
+#   0=Monday  1=Tuesday  2=Wednesday  3=Thursday  4=Friday  5=Saturday  6=Sunday
+#
+# Examples:
+#   DESIRED_DAYS = set()      → any day of the week
+#   DESIRED_DAYS = {6}        → Sundays only
+#   DESIRED_DAYS = {5, 6}     → Saturdays and Sundays
+#   DESIRED_DAYS = {0, 6}     → Mondays and Sundays
+DESIRED_DAYS: set[int] = {6}        # Sundays only
 
 # ── Email settings — set all four as GitHub Secrets (none hardcoded here) ────
 #
@@ -110,13 +120,23 @@ def save_notified(dates: list[date]) -> None:
 
 # ── Email ────────────────────────────────────────────────────────────────────
 
+def _day_filter_label() -> str:
+    """Human-readable description of DESIRED_DAYS for use in emails/logs."""
+    if not DESIRED_DAYS:
+        return "any day"
+    day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    return " / ".join(day_names[d] for d in sorted(DESIRED_DAYS))
+
+
 def send_email(available_dates: list[date]) -> None:
     lines = "\n".join(
         f"  • {d.strftime('%A, %d %B %Y')}" for d in sorted(available_dates)
     )
+    day_label = _day_filter_label()
     body = (
-        f"Shoji | A'dam has open days in your window\n"
-        f"({DESIRED_START.strftime('%d %b')} – {DESIRED_END.strftime('%d %b %Y')}):\n\n"
+        f"Shoji | A'dam has open slots in your window\n"
+        f"({DESIRED_START.strftime('%d %b')} – {DESIRED_END.strftime('%d %b %Y')}"
+        f", {day_label}):\n\n"
         f"{lines}\n\n"
         f"Book now → {BOOKING_URL}\n\n"
         f"— Your Shoji appointment checker"
@@ -427,8 +447,7 @@ def _get_available_day_nums(ctx) -> list[int]:
 def _scan_calendar_month(ctx, cal_year: int, cal_month: int) -> list[date]:
     """
     Detect available days in the calendar using CSS visual properties only.
-    Available = dark text OR cursor:pointer OR gold-circle background.
-    No clicking needed.
+    Filters by date range (DESIRED_START/END) and weekday (DESIRED_DAYS).
     """
     found = []
     last_of_month = date(cal_year, cal_month, calendar.monthrange(cal_year, cal_month)[1])
@@ -436,7 +455,9 @@ def _scan_calendar_month(ctx, cal_year: int, cal_month: int) -> list[date]:
     start_day = DESIRED_START.day if (cal_year == DESIRED_START.year and cal_month == DESIRED_START.month) else 1
     end_day   = DESIRED_END.day   if (cal_year == DESIRED_END.year   and cal_month == DESIRED_END.month)   else last_of_month.day
 
-    log.info("  Checking days %d–%d of %s %d", start_day, end_day, cal_month, cal_year)
+    day_label = _day_filter_label()
+    log.info("  Checking days %d–%d of %d-%02d  (filter: %s)",
+             start_day, end_day, cal_year, cal_month, day_label)
 
     available_nums = _get_available_day_nums(ctx)
     log.info("  Available day numbers detected: %s", available_nums)
@@ -448,8 +469,12 @@ def _scan_calendar_month(ctx, cal_year: int, cal_month: int) -> list[date]:
             slot_date = date(cal_year, cal_month, day_num)
         except ValueError:
             continue
+        # Apply weekday filter (skip if DESIRED_DAYS is set and this day doesn't match)
+        if DESIRED_DAYS and slot_date.weekday() not in DESIRED_DAYS:
+            log.debug("  ✗ Skipped %s — wrong weekday (%s)", slot_date, slot_date.strftime("%A"))
+            continue
         found.append(slot_date)
-        log.info("  ✓ Available: %s", slot_date)
+        log.info("  ✓ Available: %s (%s)", slot_date, slot_date.strftime("%A"))
 
     return found
 
@@ -558,9 +583,10 @@ def main() -> None:
     args = parser.parse_args()
 
     log.info(
-        "=== Shoji Checker | %s – %s ===",
+        "=== Shoji Checker | %s – %s | %s ===",
         DESIRED_START.strftime("%d %b %Y"),
         DESIRED_END.strftime("%d %b %Y"),
+        _day_filter_label(),
     )
 
     available = scrape_available_dates(headless=not args.debug)
