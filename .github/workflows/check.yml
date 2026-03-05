@@ -2,8 +2,8 @@ name: Shoji Appointment Checker
 
 on:
   schedule:
-    # Runs every 5 minutes. GitHub may delay by a few minutes under high load.
-    - cron: '*/5 * * * *'
+    # Runs every 15 minutes. GitHub may delay by a few minutes under high load.
+    - cron: '*/15 * * * *'
   workflow_dispatch:   # Lets you trigger a run manually from the GitHub UI
 
 # Only allow one run at a time — prevents duplicate emails if a run is slow
