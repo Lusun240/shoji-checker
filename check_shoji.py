@@ -37,9 +37,9 @@ DESIRED_END   = date(2026, 3, 21)   # Last  acceptable date (inclusive)
 
 GMAIL_SENDER       = "rdong92@gmail.com"
 GMAIL_RECIPIENT    = "rdong92@gmail.com"
-# On GitHub Actions: set repository secret GMAIL_APP_PASSWORD
-# Locally: falls back to the hardcoded value below
-GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "bggx idxw rclz bqvn")
+# Set via environment variable. On GitHub Actions, use a repository secret
+# named GMAIL_APP_PASSWORD. Locally: export GMAIL_APP_PASSWORD="xxxx xxxx xxxx xxxx"
+GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 
