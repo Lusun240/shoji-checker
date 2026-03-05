@@ -35,7 +35,7 @@ from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeo
 DESIRED_START = date(2026, 3, 8)    # First acceptable date (inclusive)
 DESIRED_END   = date(2026, 3, 21)   # Last  acceptable date (inclusive)
 
-GMAIL_SENDER       = "rdong92@gmail.com"
+GMAIL_SENDER       = "lusun240@gmail.com"
 GMAIL_RECIPIENT    = "rdong92@gmail.com"
 # Set via environment variable. On GitHub Actions, use a repository secret
 # named GMAIL_APP_PASSWORD. Locally: export GMAIL_APP_PASSWORD="xxxx xxxx xxxx xxxx"
