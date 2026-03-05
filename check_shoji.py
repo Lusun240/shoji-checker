@@ -188,14 +188,20 @@ def _find_booking_ctx(page):
     for i, frame in enumerate(frames):
         log.info("  [%d] %s", i, frame.url)
 
-    # Walk non-main frames looking for one that has the booking content
+    # Pass 1 — fast URL match: the vCita booking widget lives at clients.vcita.com
+    for frame in frames[1:]:
+        if "clients.vcita.com" in frame.url:
+            log.info("Booking frame found by URL: %s", frame.url)
+            return frame
+
+    # Pass 2 — content match fallback: look for location text inside any frame
     for frame in frames[1:]:
         try:
             has_content = frame.evaluate(
                 "() => document.body && document.body.textContent.includes('Rotterdam')"
             )
             if has_content:
-                log.info("Booking frame found: %s", frame.url)
+                log.info("Booking frame found by content: %s", frame.url)
                 return frame
         except Exception:
             continue
