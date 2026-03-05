@@ -33,7 +33,7 @@ from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeo
 # ═══════════════════════════════════════════════════════════════════════════════
 
 DESIRED_START = date(2026, 3, 8)    # First acceptable date (inclusive)
-DESIRED_END   = date(2026, 6, 3)    # Last  acceptable date (inclusive)
+DESIRED_END   = date(2026, 3, 28)    # Last  acceptable date (inclusive)
 
 # Which weekdays to accept. Uses Python's weekday numbers:
 #   0=Monday  1=Tuesday  2=Wednesday  3=Thursday  4=Friday  5=Saturday  6=Sunday
@@ -43,7 +43,7 @@ DESIRED_END   = date(2026, 6, 3)    # Last  acceptable date (inclusive)
 #   DESIRED_DAYS = {6}        → Sundays only
 #   DESIRED_DAYS = {5, 6}     → Saturdays and Sundays
 #   DESIRED_DAYS = {0, 6}     → Mondays and Sundays
-DESIRED_DAYS: set[int] = {6}        # Sundays only
+DESIRED_DAYS: set[int] = {0, 1, 6}        # Sundays only
 
 # ── Email settings — set all four as GitHub Secrets (none hardcoded here) ────
 #
