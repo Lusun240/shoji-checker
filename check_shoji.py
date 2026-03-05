@@ -35,11 +35,22 @@ from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeo
 DESIRED_START = date(2026, 3, 8)    # First acceptable date (inclusive)
 DESIRED_END   = date(2026, 3, 21)   # Last  acceptable date (inclusive)
 
-GMAIL_SENDER       = "rdjfnetflix@gmail.com"
-GMAIL_RECIPIENT    = "rdong92@gmail.com"
-# Set via environment variable. On GitHub Actions, use a repository secret
-# named GMAIL_APP_PASSWORD. Locally: export GMAIL_APP_PASSWORD="xxxx xxxx xxxx xxxx"
-GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")
+# ── Email settings — set all four as GitHub Secrets (none hardcoded here) ────
+#
+# Recommended: SendGrid free SMTP relay (sendgrid.com → free tier → API key)
+#   SMTP_HOST = smtp.sendgrid.net   SMTP_PORT = 587   SMTP_USER = apikey
+#   SMTP_PASS = <your SendGrid API key>
+#
+# Alternative: Gmail App Password
+#   SMTP_HOST = smtp.gmail.com      SMTP_PORT = 465   SMTP_USER = <sender address>
+#   SMTP_PASS = <Gmail App Password>
+#
+EMAIL_SENDER    = os.environ.get("EMAIL_SENDER", "")     # "From" address
+EMAIL_RECIPIENT = os.environ.get("EMAIL_RECIPIENT", "")  # "To"  address
+SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.sendgrid.net")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER", "apikey")   # literal "apikey" for SendGrid
+SMTP_PASS = os.environ.get("SMTP_PASS", "")         # SendGrid API key or Gmail App Password
 
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -112,14 +123,23 @@ def send_email(available_dates: list[date]) -> None:
     )
 
     msg = MIMEMultipart()
-    msg["From"]    = GMAIL_SENDER
-    msg["To"]      = GMAIL_RECIPIENT
+    msg["From"]    = EMAIL_SENDER
+    msg["To"]      = EMAIL_RECIPIENT
     msg["Subject"] = f"Shoji slot open — {len(available_dates)} day(s) available"
     msg.attach(MIMEText(body, "plain"))
 
-    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as srv:
-        srv.login(GMAIL_SENDER, GMAIL_APP_PASSWORD)
-        srv.sendmail(GMAIL_SENDER, GMAIL_RECIPIENT, msg.as_string())
+    if SMTP_PORT == 465:
+        # SSL from the start (Gmail-style)
+        with smtplib.SMTP_SSL(SMTP_HOST, 465) as srv:
+            srv.login(SMTP_USER, SMTP_PASS)
+            srv.sendmail(EMAIL_SENDER, EMAIL_RECIPIENT, msg.as_string())
+    else:
+        # STARTTLS (SendGrid / most other providers)
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as srv:
+            srv.ehlo()
+            srv.starttls()
+            srv.login(SMTP_USER, SMTP_PASS)
+            srv.sendmail(EMAIL_SENDER, EMAIL_RECIPIENT, msg.as_string())
 
     log.info("Email sent — %d date(s): %s", len(available_dates), [d.isoformat() for d in available_dates])
 
