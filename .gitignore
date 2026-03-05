@@ -1,0 +1,16 @@
+# Python virtual environment — never commit this
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Debug screenshots generated during runs
+step*.png
+debug*.png
+*.png
+
+# Local log (GitHub Actions logs are captured in the workflow UI instead)
+checker.log
+
+# macOS junk
+.DS_Store

@@ -1,0 +1,70 @@
+name: Shoji Appointment Checker
+
+on:
+  schedule:
+    # Runs every 5 minutes. GitHub may delay by a few minutes under high load.
+    - cron: '*/5 * * * *'
+  workflow_dispatch:   # Lets you trigger a run manually from the GitHub UI
+
+# Only allow one run at a time — prevents duplicate emails if a run is slow
+concurrency:
+  group: shoji-checker
+  cancel-in-progress: false   # queue the next run rather than cancel
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4        # Kill the job if something hangs
+
+    steps:
+      # ── 1. Get the code ────────────────────────────────────────────────────
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # ── 2. Restore last_notified.json from the previous run ────────────────
+      #   We use a unique save-key each run so we can always find the latest.
+      #   'restore-keys' prefix-matches and returns the most recently saved entry.
+      - name: Restore checker state
+        uses: actions/cache/restore@v4
+        with:
+          path: last_notified.json
+          key: shoji-state-never-exact-match
+          restore-keys: shoji-state-
+
+      # ── 3. Python + pip cache ──────────────────────────────────────────────
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      # ── 4. Playwright browser (cached after first download) ────────────────
+      - name: Cache Playwright Chromium
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-${{ hashFiles('requirements.txt') }}
+
+      - name: Install Playwright browser
+        # Always run so system-level deps (fonts, libs) are present.
+        # When the cache hits, Chromium itself is already there — only
+        # the fast apt dependency check runs (~10 s).
+        run: playwright install --with-deps chromium
+
+      # ── 5. Run the checker ─────────────────────────────────────────────────
+      - name: Run appointment checker
+        env:
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python check_shoji.py
+
+      # ── 6. Persist updated state for next run ──────────────────────────────
+      - name: Save checker state
+        uses: actions/cache/save@v4
+        if: always()    # save even if the checker step failed
+        with:
+          path: last_notified.json
+          key: shoji-state-${{ github.run_id }}-${{ github.run_attempt }}
