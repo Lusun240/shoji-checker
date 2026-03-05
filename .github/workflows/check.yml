@@ -58,7 +58,14 @@ jobs:
       # ── 5. Run the checker ─────────────────────────────────────────────────
       - name: Run appointment checker
         env:
-          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          EMAIL_SENDER:    ${{ secrets.EMAIL_SENDER }}
+          EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
+          SMTP_PASS:       ${{ secrets.SMTP_PASS }}
+          # SendGrid defaults are already baked into the script.
+          # Only set these if you're using a different provider:
+          # SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          # SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          # SMTP_USER: ${{ secrets.SMTP_USER }}
         run: python check_shoji.py
 
       # ── 6. Persist updated state for next run ──────────────────────────────
